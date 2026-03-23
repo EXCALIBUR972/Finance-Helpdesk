@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
 import { sendCierreEmail } from '@/app/actions/emails';
+import Navbar from '@/components/Navbar';
+import { Paperclip, X, File as FileIcon, Image as ImageIcon, Download } from 'lucide-react';
 
 export default function TicketDetail() {
   const { id } = useParams();
@@ -12,6 +14,8 @@ export default function TicketDetail() {
   const [mensaje, setMensaje] = useState('');
   const [tipo, setTipo] = useState<'Agente' | 'Nota'>('Agente');
   const [nextStatus, setNextStatus] = useState('');
+  const [archivo, setArchivo] = useState<File | null>(null);
+  const [subiendo, setSubiendo] = useState(false);
   const supabase = createClient();
 
   useEffect(() => {
@@ -27,7 +31,7 @@ export default function TicketDetail() {
     
     const { data: interactionData } = await supabase
       .from('interacciones')
-      .select('*, agentes(nombre_completo)')
+      .select('*, agentes!id_agente(nombre_completo)')
       .eq('id_caso', id)
       .order('fecha_hora', { ascending: true });
 
@@ -41,25 +45,60 @@ export default function TicketDetail() {
   async function handleSendMessage(e: React.FormEvent) {
     e.preventDefault();
     
-    // Si hay mensaje, enviarlo
-    if (mensaje.trim()) {
+    // Si hay mensaje o archivo, procesar
+    if (mensaje.trim() || archivo) {
+      setSubiendo(true);
       const { data: { user } } = await supabase.auth.getUser();
-      await supabase
+      let fileUrl = null;
+
+      if (archivo) {
+        // Validar tamaño (5MB)
+        if (archivo.size > 5 * 1024 * 1024) {
+          alert('El archivo es demasiado grande (máximo 5MB)');
+          setSubiendo(false);
+          return;
+        }
+
+        const fileExt = archivo.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${id}/${fileName}`;
+
+        const { error: uploadError, data } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, archivo);
+
+        if (uploadError) {
+          console.error('Error subiendo archivo:', uploadError);
+          alert('Error al subir el archivo');
+        } else {
+          const { data: { publicUrl } } = supabase.storage
+            .from('attachments')
+            .getPublicUrl(filePath);
+          fileUrl = publicUrl;
+        }
+      }
+
+      const { error } = await supabase
         .from('interacciones')
         .insert([{
           id_caso: id,
           id_agente: user?.id,
           tipo_mensaje: tipo,
-          mensaje: mensaje
+          mensaje: mensaje,
+          archivo_url: fileUrl
         }]);
-      setMensaje('');
+
+      if (!error) {
+        setMensaje('');
+        setArchivo(null);
+      }
+      setSubiendo(false);
     }
 
     // Si el estado cambió, actualizarlo
     if (nextStatus && nextStatus !== ticket.status) {
       await updateStatus(nextStatus);
-    } else if (mensaje.trim()) {
-      // Si solo se envió mensaje, refrescar para mostrarlo
+    } else if (mensaje.trim() || archivo) {
       fetchData();
     }
   }
@@ -99,8 +138,9 @@ export default function TicketDetail() {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
+      <Navbar />
       {/* Header */}
-      <header className="bg-white border-b px-8 py-4 flex justify-between items-center sticky top-0 z-10">
+      <header className="bg-white border-b px-8 py-4 flex justify-between items-center sticky top-14 z-10 shadow-sm">
         <div className="flex items-center gap-4">
           <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-600 transition">← Volver</button>
           <div>
@@ -151,6 +191,33 @@ export default function TicketDetail() {
                         'bg-indigo-600 text-white rounded-tr-none shadow-indigo-200'
                       }`}>
                         <p className="text-sm whitespace-pre-wrap leading-relaxed">{inter.mensaje}</p>
+                        
+                        {/* Adjuntos */}
+                        {inter.archivo_url && (
+                          <div className="mt-3 pt-3 border-t border-white/10">
+                            {inter.archivo_url.match(/\.(jpeg|jpg|gif|png|webp)$/i) ? (
+                              <a href={inter.archivo_url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-xl border border-white/20 hover:opacity-90 transition">
+                                <img src={inter.archivo_url} alt="Adjunto" className="max-h-60 w-full object-cover" />
+                              </a>
+                            ) : (
+                              <a 
+                                href={inter.archivo_url} 
+                                target="_blank" 
+                                rel="noreferrer"
+                                className={`flex items-center gap-2 p-3 rounded-xl border transition ${
+                                  inter.tipo_mensaje === 'Agente' 
+                                  ? 'bg-white/10 border-white/20 text-white hover:bg-white/20' 
+                                  : 'bg-slate-50 border-slate-100 text-slate-700 hover:bg-slate-100'
+                                }`}
+                              >
+                                <FileIcon size={16} />
+                                <span className="text-xs font-bold truncate flex-1">Ver Archivo Adjunto</span>
+                                <Download size={14} />
+                              </a>
+                            )}
+                          </div>
+                        )}
+
                         <div className={`flex items-center gap-2 mt-3 text-[9px] font-bold uppercase tracking-widest ${
                           inter.tipo_mensaje === 'Agente' ? 'text-indigo-200' : 'text-slate-400'
                         }`}>
@@ -209,24 +276,64 @@ export default function TicketDetail() {
                   </select>
                 </div>
               </div>
-              <div className="flex gap-4 items-end">
-                <textarea
-                  value={mensaje}
-                  onChange={(e) => setMensaje(e.target.value)}
-                  className="flex-1 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 focus:outline-none resize-none text-sm text-slate-900 transition-all font-medium"
-                  placeholder={tipo === 'Agente' ? 'Escribe una respuesta para el cliente...' : 'Escribe una nota interna...'}
-                  rows={2}
-                />
+              <div className="flex gap-4 items-end relative">
+                <div className="flex flex-col flex-1 gap-2">
+                  {archivo && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-lg w-fit">
+                      <ImageIcon size={12} className="text-indigo-600" />
+                      <span className="text-[10px] font-bold text-indigo-700 truncate max-w-[200px]">{archivo.name}</span>
+                      <button 
+                        type="button" 
+                        onClick={() => setArchivo(null)}
+                        className="text-indigo-400 hover:text-indigo-600"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  )}
+                  <div className="flex gap-2 items-center">
+                    <textarea
+                      value={mensaje}
+                      onChange={(e) => setMensaje(e.target.value)}
+                      className="flex-1 p-4 bg-slate-50 border-2 border-transparent rounded-2xl focus:bg-white focus:border-indigo-100 focus:ring-4 focus:ring-indigo-50/50 focus:outline-none resize-none text-sm text-slate-900 transition-all font-medium"
+                      placeholder={tipo === 'Agente' ? 'Escribe una respuesta para el cliente...' : 'Escribe una nota interna...'}
+                      rows={2}
+                    />
+                    <div className="flex flex-col gap-2">
+                      <input 
+                        type="file" 
+                        id="file-upload" 
+                        className="hidden" 
+                        onChange={(e) => setArchivo(e.target.files?.[0] || null)}
+                      />
+                      <label 
+                        htmlFor="file-upload"
+                        className="p-3 bg-slate-100 text-slate-500 rounded-xl hover:bg-slate-200 cursor-pointer transition-colors shadow-sm"
+                        title="Adjuntar archivo"
+                      >
+                        <Paperclip size={18} />
+                      </label>
+                    </div>
+                  </div>
+                </div>
                 <button 
                   type="submit"
-                  disabled={!mensaje.trim() && nextStatus === ticket.status}
-                  className={`h-12 px-8 rounded-2xl font-black uppercase text-xs transition-all shadow-xl ${
-                    (mensaje.trim() || nextStatus !== ticket.status)
-                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 hover:-translate-y-0.5' 
-                    : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'
+                  disabled={subiendo || (!mensaje.trim() && !archivo && nextStatus === ticket.status)}
+                  className={`h-12 px-8 rounded-2xl font-black uppercase text-xs transition-all shadow-xl flex items-center gap-2 ${
+                    subiendo 
+                    ? 'bg-slate-200 text-slate-400 cursor-wait'
+                    : (mensaje.trim() || archivo || nextStatus !== ticket.status)
+                      ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 hover:-translate-y-0.5' 
+                      : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'
                   }`}
                 >
-                  {nextStatus !== ticket.status && !mensaje.trim() ? 'Actualizar Estado' : 'Enviar y Actualizar'}
+                  {subiendo ? (
+                    'Subiendo...'
+                  ) : nextStatus !== ticket.status && !mensaje.trim() && !archivo ? (
+                    'Actualizar Estado'
+                  ) : (
+                    'Enviar y Actualizar'
+                  )}
                 </button>
               </div>
             </form>
