@@ -74,7 +74,7 @@ export default function Dashboard() {
       .order('fecha_creacion', { ascending: false });
 
     if (statusFilter === 'Activos') {
-      query = query.in('status', ['No resuelto', 'Pendiente']);
+      query = query.in('status', ['Escalado', 'Pendiente', 'Desarrollo']);
     } else if (statusFilter !== 'Todos') {
       query = query.eq('status', statusFilter);
     }
@@ -168,9 +168,10 @@ export default function Dashboard() {
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
               >
-                <option value="Activos">Ver Activos (Nuevos/Pte)</option>
-                <option>No resuelto</option>
+                <option value="Activos">Ver Activos (Esc/Pte/Des)</option>
+                <option>Escalado</option>
                 <option>Pendiente</option>
+                <option>Desarrollo</option>
                 <option>Resuelto</option>
                 <option>Todos</option>
               </select>
@@ -293,6 +294,7 @@ export default function Dashboard() {
                       <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest shadow-sm ${
                         ticket.status === 'Resuelto' ? 'bg-emerald-100 text-emerald-700' : 
                         ticket.status === 'Pendiente' ? 'bg-amber-100 text-amber-700' : 
+                        ticket.status === 'Desarrollo' ? 'bg-indigo-100 text-indigo-700' :
                         'bg-rose-100 text-rose-700'
                       }`}>
                         {ticket.status}

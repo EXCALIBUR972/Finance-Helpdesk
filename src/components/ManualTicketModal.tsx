@@ -14,7 +14,7 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
     descripcion: '',
     id_cliente: '',
     nivel_actual: 'L1',
-    status: 'No resuelto',
+    status: 'Escalado',
     contact_name: '',
     contact_email: '',
     contact_phone: '',
@@ -81,7 +81,7 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
       onClose();
       setFormData({ 
         titulo: '', descripcion: '', id_cliente: '', nivel_actual: 'L1',
-        status: 'No resuelto',
+        status: 'Escalado',
         contact_name: '', contact_email: '', contact_phone: ''
       });
     } catch (error: any) {
@@ -237,8 +237,9 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
                 value={formData.status}
                 onChange={e => setFormData({...formData, status: e.target.value})}
               >
-                <option value="No resuelto">No resuelto</option>
+                <option value="Escalado">Escalado</option>
                 <option value="Pendiente">Pendiente</option>
+                <option value="Desarrollo">Desarrollo</option>
                 <option value="Resuelto">Resuelto</option>
               </select>
             </div>

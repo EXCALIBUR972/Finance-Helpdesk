@@ -44,7 +44,7 @@ export async function POST(request: Request) {
       .from('casos')
       .select('*')
       .eq('id_cliente', cliente!.id_cliente)
-      .in('status', ['No resuelto', 'Pendiente'])
+      .in('status', ['Escalado', 'Pendiente'])
       .single();
 
     if (caseError && caseError.code !== 'PGRST116') {
@@ -64,7 +64,7 @@ export async function POST(request: Request) {
         .insert([{
           numero_radicado: numeroRadicado,
           id_cliente: cliente!.id_cliente,
-          status: 'No resuelto',
+          status: 'Escalado',
           nivel_actual: 'L1',
           titulo: 'Solicitud vía WhatsApp'
         }])

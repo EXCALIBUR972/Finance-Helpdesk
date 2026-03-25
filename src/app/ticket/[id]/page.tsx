@@ -150,6 +150,7 @@ export default function TicketDetail() {
           <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${
             ticket.status === 'Resuelto' ? 'bg-green-100 text-green-700' : 
             ticket.status === 'Pendiente' ? 'bg-amber-100 text-amber-700' : 
+            ticket.status === 'Desarrollo' ? 'bg-indigo-100 text-indigo-700' :
             'bg-red-100 text-red-700'
           }`}>
             {ticket.status}
@@ -265,13 +266,15 @@ export default function TicketDetail() {
                     className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none shadow-sm transition-colors border ${
                       nextStatus === 'Resuelto' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
                       nextStatus === 'Pendiente' ? 'bg-amber-50 border-amber-200 text-amber-700' : 
+                      nextStatus === 'Desarrollo' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' :
                       'bg-rose-50 border-rose-200 text-rose-700'
                     }`}
                     value={nextStatus}
                     onChange={(e) => setNextStatus(e.target.value)}
                   >
-                    <option value="No resuelto">No resuelto</option>
+                    <option value="Escalado">Escalado</option>
                     <option value="Pendiente">Pendiente</option>
+                    <option value="Desarrollo">Desarrollo</option>
                     <option value="Resuelto">Resuelto</option>
                   </select>
                 </div>
