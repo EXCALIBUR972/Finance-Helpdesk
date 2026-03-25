@@ -8,6 +8,8 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
   const [clientes, setClientes] = useState<any[]>([]);
   const [clientSearch, setClientSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
   
   const [formData, setFormData] = useState({
     titulo: '',
@@ -53,6 +55,26 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
       const { count } = await supabase.from('casos').select('id_caso', { count: 'exact', head: true });
       const numeroRadicado = `CASO-${(count || 0) + 1001}`;
 
+      let publicUrl = '';
+      if (file) {
+        setUploading(true);
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random()}.${fileExt}`;
+        const filePath = `${user?.id}/${fileName}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('attachments')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('attachments')
+          .getPublicUrl(filePath);
+        
+        publicUrl = urlData.publicUrl;
+      }
+
       const { error } = await supabase.from('casos').insert([{
         ...formData,
         numero_radicado: numeroRadicado,
@@ -66,7 +88,8 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
         id_caso: (await supabase.from('casos').select('id_caso').eq('numero_radicado', numeroRadicado).single()).data?.id_caso,
         id_agente: user?.id,
         tipo_mensaje: 'Sistema',
-        mensaje: `Ticket **creado manualmente** por agente.`
+        mensaje: `Ticket **creado manualmente** por agente.${file ? `\n\nArchivo adjunto inicial enviado.` : ''}`,
+        archivo_url: publicUrl || null
       }]);
       
       // Enviar Email de Apertura
@@ -84,10 +107,12 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
         status: 'Escalado',
         contact_name: '', contact_email: '', contact_phone: ''
       });
+      setFile(null);
     } catch (error: any) {
       alert('Error creando ticket: ' + error.message);
     } finally {
       setLoading(false);
+      setUploading(false);
     }
   }
 
@@ -254,6 +279,22 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
                 onChange={e => setFormData({...formData, descripcion: e.target.value})}
               />
             </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Adjuntar Documento (Opcional)</label>
+              <div className="flex items-center gap-3 p-3 border-2 border-dashed border-slate-200 rounded-xl hover:border-indigo-300 transition-colors">
+                <input 
+                  type="file"
+                  className="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 cursor-pointer w-full"
+                  onChange={e => setFile(e.target.files?.[0] || null)}
+                />
+              </div>
+              {file && (
+                <p className="text-[10px] text-indigo-500 mt-1 font-bold">
+                  ✓ Seleccionado: {file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-3 pt-4">
@@ -266,10 +307,10 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
             </button>
             <button 
               type="submit"
-              disabled={loading}
+              disabled={loading || uploading}
               className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition disabled:opacity-50"
             >
-              {loading ? 'Guardando...' : 'Crear Ticket'}
+              {loading || uploading ? (uploading ? 'Subiendo archivo...' : 'Guardando...') : 'Crear Ticket'}
             </button>
           </div>
         </form>

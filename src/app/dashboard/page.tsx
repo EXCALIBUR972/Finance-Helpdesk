@@ -261,6 +261,8 @@ export default function Dashboard() {
               <tr className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
                 <th className="px-6 py-4">Radicado / Título</th>
                 <th className="px-6 py-4">Cliente</th>
+                <th className="px-6 py-4">Contacto</th>
+                <th className="px-6 py-4">Agente</th>
                 <th className="px-6 py-4">Nivel / Estado</th>
                 <th className="px-6 py-4">Fecha Creación</th>
                 <th className="px-6 py-4">Fecha Cierre</th>
@@ -276,10 +278,20 @@ export default function Dashboard() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm font-bold text-slate-800 leading-none">
-                      {ticket.contact_name || (ticket.clientes ? `${ticket.clientes.nombre} ${ticket.clientes.apellidos}` : 'Desconocido')}
+                      {ticket.clientes ? `${ticket.clientes.nombre} ${ticket.clientes.apellidos}` : 'Desconocido'}
                     </div>
                     <div className="text-[9px] text-slate-400 font-black uppercase tracking-widest mt-1">
-                      {ticket.clientes?.identification_number || 'Sin Documento'}
+                      {ticket.clientes?.nit_cedula || 'Sin Documento'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm font-bold text-indigo-600">
+                      {ticket.contact_name || '---'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-xs font-bold text-slate-600">
+                      {ticket.agentes?.nombre_completo || 'Sistema'}
                     </div>
                   </td>
                   <td className="px-6 py-4">
