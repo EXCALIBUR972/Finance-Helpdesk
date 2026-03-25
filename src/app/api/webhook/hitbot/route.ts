@@ -5,10 +5,11 @@ import { sendAperturaEmail } from '@/app/actions/emails';
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { from, text, name } = body;
+    const { from, text, name, file_url, media_url } = body;
+    const attachmentUrl = file_url || media_url || null;
 
-    if (!from || !text) {
-      return NextResponse.json({ error: 'Faltan datos obligatorios (from, text)' }, { status: 400 });
+    if (!from || (!text && !attachmentUrl)) {
+      return NextResponse.json({ error: 'Faltan datos obligatorios (from, text o attachment)' }, { status: 400 });
     }
 
     // 1. Buscar o crear el cliente
@@ -54,7 +55,6 @@ export async function POST(request: Request) {
 
     if (!casoActivo) {
       // 3. Crear nuevo caso si no hay uno abierto
-      // Generar radicado único (simulado con timestamp para brevedad, en prod usar secuencia)
       const count = await supabaseAdmin.from('casos').select('id_caso', { count: 'exact', head: true });
       const nextId = (count.count || 0) + 1001;
       numeroRadicado = `CASO-${nextId}`;
@@ -89,13 +89,14 @@ export async function POST(request: Request) {
       numeroRadicado = casoActivo.numero_radicado;
     }
 
-    // 4. Registrar la interacción (mensaje del cliente)
+    // 4. Registrar la interacción (mensaje del cliente y adjunto si existe)
     const { error: interError } = await supabaseAdmin
       .from('interacciones')
       .insert([{
         id_caso: casoActivo!.id_caso,
         tipo_mensaje: 'Cliente',
-        mensaje: text
+        mensaje: text || 'Archivo adjunto recibido',
+        archivo_url: attachmentUrl
       }]);
 
     if (interError) throw interError;

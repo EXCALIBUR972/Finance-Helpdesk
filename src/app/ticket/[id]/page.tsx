@@ -52,9 +52,9 @@ export default function TicketDetail() {
       let fileUrl = null;
 
       if (archivo) {
-        // Validar tamaño (5MB)
-        if (archivo.size > 5 * 1024 * 1024) {
-          alert('El archivo es demasiado grande (máximo 5MB)');
+        // Validar tamaño (5GB)
+        if (archivo.size > 5 * 1024 * 1024 * 1024) {
+          alert('El archivo es demasiado grande (máximo 5GB)');
           setSubiendo(false);
           return;
         }
