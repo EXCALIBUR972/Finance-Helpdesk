@@ -16,6 +16,8 @@ export default function TicketDetail() {
   const [nextStatus, setNextStatus] = useState('');
   const [archivo, setArchivo] = useState<File | null>(null);
   const [subiendo, setSubiendo] = useState(false);
+  const [allAgentes, setAllAgentes] = useState<any[]>([]);
+  const [selectedAgenteId, setSelectedAgenteId] = useState<string>('');
   const supabase = createClient();
 
   useEffect(() => {
@@ -38,8 +40,18 @@ export default function TicketDetail() {
     if (ticketData) {
       setTicket(ticketData);
       if (!nextStatus) setNextStatus(ticketData.status);
+      if (!selectedAgenteId) setSelectedAgenteId(ticketData.id_agente_asignado || '');
     }
     if (interactionData) setInteracciones(interactionData);
+
+    // Cargar lista de agentes
+    const { data: agentesData } = await supabase
+      .from('agentes')
+      .select('id_agente, nombre_completo')
+      .eq('activo', true)
+      .order('nombre_completo');
+    
+    if (agentesData) setAllAgentes(agentesData);
   }
 
   async function handleSendMessage(e: React.FormEvent) {
@@ -96,16 +108,17 @@ export default function TicketDetail() {
     }
 
     // Si el estado cambió, actualizarlo
-    if (nextStatus && nextStatus !== ticket.status) {
-      await updateStatus(nextStatus);
+    if (nextStatus && (nextStatus !== ticket.status || (nextStatus === 'Escalado' && selectedAgenteId !== ticket.id_agente_asignado))) {
+      await updateStatus(nextStatus, undefined, selectedAgenteId);
     } else if (mensaje.trim() || archivo) {
       fetchData();
     }
   }
 
-  async function updateStatus(status: string, nivel?: string) {
+  async function updateStatus(status: string, nivel?: string, agenteId?: string) {
     const updates: any = { status };
     if (nivel) updates.nivel_actual = nivel;
+    if (agenteId) updates.id_agente_asignado = agenteId;
     if (status === 'Resuelto') updates.fecha_cierre = new Date().toISOString();
 
     const { error } = await supabase
@@ -117,6 +130,11 @@ export default function TicketDetail() {
       const { data: { user } } = await supabase.auth.getUser();
       let logMensaje = `Estatus cambiado a: **${status}**`;
       if (nivel) logMensaje = `Nivel cambiado a: **${nivel}** (Estatus: ${status})`;
+      
+      if (status === 'Escalado' && agenteId) {
+        const ag = allAgentes.find(a => a.id_agente === agenteId);
+        if (ag) logMensaje += ` (Asignado a: **${ag.nombre_completo}**)`;
+      }
 
       await supabase.from('interacciones').insert([{
         id_caso: id,
@@ -279,6 +297,27 @@ export default function TicketDetail() {
                   </select>
                 </div>
               </div>
+
+              {nextStatus === 'Escalado' && (
+                <div className="flex items-center gap-3 p-3 bg-indigo-50/50 border border-indigo-100 rounded-2xl mb-4 max-w-4xl mx-auto shadow-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                  <label className="text-[10px] font-black text-indigo-900 uppercase tracking-widest pl-2">Asignar a Agente:</label>
+                  <select 
+                    className="flex-1 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest outline-none border border-indigo-200 bg-white text-indigo-700 shadow-sm focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                    value={selectedAgenteId}
+                    onChange={(e) => setSelectedAgenteId(e.target.value)}
+                  >
+                    <option value="">-- Seleccionar Agente --</option>
+                    {allAgentes.length > 0 ? (
+                      allAgentes.map(ag => (
+                        <option key={ag.id_agente} value={ag.id_agente}>{ag.nombre_completo}</option>
+                      ))
+                    ) : (
+                      <option disabled>No hay agentes activos</option>
+                    )}
+                  </select>
+                </div>
+              )}
+
               <div className="flex gap-4 items-end relative">
                 <div className="flex flex-col flex-1 gap-2">
                   {archivo && (
@@ -321,19 +360,19 @@ export default function TicketDetail() {
                 </div>
                 <button 
                   type="submit"
-                  disabled={subiendo || (!mensaje.trim() && !archivo && nextStatus === ticket.status)}
+                  disabled={subiendo || (!mensaje.trim() && !archivo && nextStatus === ticket.status && selectedAgenteId === ticket.id_agente_asignado)}
                   className={`h-12 px-8 rounded-2xl font-black uppercase text-xs transition-all shadow-xl flex items-center gap-2 ${
                     subiendo 
                     ? 'bg-slate-200 text-slate-400 cursor-wait'
-                    : (mensaje.trim() || archivo || nextStatus !== ticket.status)
+                    : (mensaje.trim() || archivo || nextStatus !== ticket.status || (nextStatus === 'Escalado' && selectedAgenteId !== ticket.id_agente_asignado))
                       ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-200 hover:-translate-y-0.5' 
                       : 'bg-slate-100 text-slate-300 cursor-not-allowed shadow-none'
                   }`}
                 >
                   {subiendo ? (
                     'Subiendo...'
-                  ) : nextStatus !== ticket.status && !mensaje.trim() && !archivo ? (
-                    'Actualizar Estado'
+                  ) : (nextStatus !== ticket.status || (nextStatus === 'Escalado' && selectedAgenteId !== ticket.id_agente_asignado)) && !mensaje.trim() && !archivo ? (
+                    (nextStatus === 'Escalado' && selectedAgenteId !== ticket.id_agente_asignado) ? 'Reasignar Agente' : 'Actualizar Estado'
                   ) : (
                     'Enviar y Actualizar'
                   )}
