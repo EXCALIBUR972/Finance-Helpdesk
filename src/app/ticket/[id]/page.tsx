@@ -51,7 +51,13 @@ export default function TicketDetail() {
       .eq('activo', true)
       .order('nombre_completo');
     
-    if (agentesData) setAllAgentes(agentesData);
+    if (agentesData) {
+      // Filtrar agentes duplicados por nombre
+      const uniqueAgentes = Array.from(
+        new Map(agentesData.map(ag => [ag.nombre_completo, ag])).values()
+      );
+      setAllAgentes(uniqueAgentes);
+    }
   }
 
   async function handleSendMessage(e: React.FormEvent) {
