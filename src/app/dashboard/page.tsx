@@ -69,7 +69,8 @@ export default function Dashboard() {
         contact_email,
         contact_phone,
         clientes (nombre, apellidos, nit_cedula, correo),
-        agentes!casos_id_agente_asignado_fkey (nombre_completo)
+        agente_asignado:agentes!casos_id_agente_asignado_fkey (nombre_completo),
+        agente_creador:agentes!casos_id_creador_fkey (nombre_completo)
       `)
       .order('fecha_creacion', { ascending: false });
 
@@ -104,7 +105,9 @@ export default function Dashboard() {
     const clientInfo = `${clientName} ${clientDoc} ${clientEmail}`.toLowerCase();
     
     const matchClient = !client || clientInfo.includes(client.toLowerCase());
-    const matchAgent = agent === 'Todos' || t.agentes?.nombre_completo === agent;
+    const matchAgent = agent === 'Todos' || 
+                       (t.agente_asignado?.nombre_completo === agent) || 
+                       (!t.agente_asignado && t.agente_creador?.nombre_completo === agent);
     
     // Filtro por fecha (usar fecha local del ticket)
     const ticketDate = new Date(t.fecha_creacion).toLocaleDateString('sv-SE'); // YYYY-MM-DD
@@ -291,7 +294,7 @@ export default function Dashboard() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-xs font-bold text-slate-600">
-                      {ticket.agentes?.nombre_completo || 'Sin asignar'}
+                      {ticket.agente_asignado?.nombre_completo || ticket.agente_creador?.nombre_completo || 'Sistema'}
                     </div>
                   </td>
                   <td className="px-6 py-4">
