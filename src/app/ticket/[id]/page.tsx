@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
 import { useParams, useRouter } from 'next/navigation';
-import { sendCierreEmail } from '@/app/actions/emails';
+import { sendCierreEmail, sendAsignacionEmail } from '@/app/actions/emails';
 import Navbar from '@/components/Navbar';
 import { Paperclip, X, File as FileIcon, Image as ImageIcon, Download } from 'lucide-react';
 
@@ -47,7 +47,7 @@ export default function TicketDetail() {
     // Cargar lista de agentes
     const { data: agentesData } = await supabase
       .from('agentes')
-      .select('id_agente, nombre_completo')
+      .select('id_agente, nombre_completo, email')
       .eq('activo', true)
       .order('nombre_completo');
     
@@ -139,7 +139,12 @@ export default function TicketDetail() {
       
       if (status === 'Escalado' && agenteId) {
         const ag = allAgentes.find(a => a.id_agente === agenteId);
-        if (ag) logMensaje += ` (Asignado a: **${ag.nombre_completo}**)`;
+        if (ag) {
+          logMensaje += ` (Asignado a: **${ag.nombre_completo}**)`;
+          if (ag.email) {
+            await sendAsignacionEmail(ag.email, ag.nombre_completo, ticket.numero_radicado, ticket.titulo);
+          }
+        }
       }
 
       await supabase.from('interacciones').insert([{
