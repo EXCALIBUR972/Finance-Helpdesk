@@ -69,7 +69,7 @@ export default function Dashboard() {
         contact_email,
         contact_phone,
         clientes (nombre, apellidos, nit_cedula, correo),
-        agentes!casos_id_creador_fkey (nombre_completo)
+        agentes!casos_id_agente_asignado_fkey (nombre_completo)
       `)
       .order('fecha_creacion', { ascending: false });
 
@@ -291,7 +291,7 @@ export default function Dashboard() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-xs font-bold text-slate-600">
-                      {ticket.agentes?.nombre_completo || 'Sistema'}
+                      {ticket.agentes?.nombre_completo || 'Sin asignar'}
                     </div>
                   </td>
                   <td className="px-6 py-4">
