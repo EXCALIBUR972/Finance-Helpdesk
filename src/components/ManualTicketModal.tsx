@@ -20,6 +20,7 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
     contact_name: '',
     contact_email: '',
     contact_phone: '',
+    categoria: 'Otros',
   });
 
   const supabase = createClient();
@@ -75,20 +76,20 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
         publicUrl = urlData.publicUrl;
       }
 
-      const { error } = await supabase.from('casos').insert([{
+      const { data: newTicket, error } = await supabase.from('casos').insert([{
         ...formData,
         numero_radicado: numeroRadicado,
         id_creador: user?.id,
-      }]);
+      }]).select('id_caso').single();
 
       if (error) throw error;
 
       // Registrar evento de creación en la historia
       await supabase.from('interacciones').insert([{
-        id_caso: (await supabase.from('casos').select('id_caso').eq('numero_radicado', numeroRadicado).single()).data?.id_caso,
+        id_caso: newTicket.id_caso,
         id_agente: user?.id,
         tipo_mensaje: 'Sistema',
-        mensaje: `Ticket **creado manualmente** por agente.${file ? `\n\nArchivo adjunto inicial enviado.` : ''}`,
+        mensaje: `Ticket **creado manualmente** por agente (Categoría: ${formData.categoria}).${file ? `\n\nArchivo adjunto inicial enviado.` : ''}`,
         archivo_url: publicUrl || null
       }]);
       
@@ -105,7 +106,8 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
       setFormData({ 
         titulo: '', descripcion: '', id_cliente: '', nivel_actual: 'L1',
         status: 'Escalado',
-        contact_name: '', contact_email: '', contact_phone: ''
+        contact_name: '', contact_email: '', contact_phone: '',
+        categoria: 'Otros'
       });
       setFile(null);
     } catch (error: any) {
@@ -243,6 +245,22 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
                 <option value="L1">Nivel 1 (Básico)</option>
                 <option value="L2">Nivel 2 (Técnico)</option>
                 <option value="L3">Nivel 3 (Crítico)</option>
+              </select>
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Categoría de Negocio</label>
+              <select 
+                className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-indigo-50/30 border-indigo-100"
+                value={formData.categoria}
+                onChange={e => setFormData({...formData, categoria: e.target.value})}
+              >
+                <option value="Otros">Seleccionar Categoría...</option>
+                <option value="Fiscal">Fiscal (Retenciones, Impuestos)</option>
+                <option value="Contable">Contable (Libros, Balances)</option>
+                <option value="Nómina">Nómina (Pagos, Seguridad Social)</option>
+                <option value="Técnico">Soporte Técnico</option>
+                <option value="Otros">Otros / Consultas Generales</option>
               </select>
             </div>
 

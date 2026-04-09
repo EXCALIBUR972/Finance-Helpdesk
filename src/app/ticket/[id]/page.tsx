@@ -215,11 +215,17 @@ export default function TicketDetail() {
                     </div>
                   ) : (
                     <div className={`flex ${inter.tipo_mensaje === 'Cliente' ? 'justify-start' : 'justify-end'}`}>
-                      <div className={`max-w-[85%] p-4 rounded-3xl shadow-sm ${
+                      <div className={`max-w-[85%] p-4 rounded-3xl shadow-sm relative ${
                         inter.tipo_mensaje === 'Cliente' ? 'bg-white text-slate-800 rounded-tl-none border border-slate-100' : 
-                        inter.tipo_mensaje === 'Nota' ? 'bg-amber-50 border border-amber-200 text-amber-900 border-dashed rounded-2xl' :
+                        inter.tipo_mensaje === 'Nota' ? 'bg-amber-50 border-2 border-amber-200 text-amber-900 border-dashed rounded-2xl shadow-inner' :
                         'bg-indigo-600 text-white rounded-tr-none shadow-indigo-200'
                       }`}>
+                        {inter.tipo_mensaje === 'Nota' && (
+                          <div className="flex items-center gap-1 mb-2 text-[8px] font-black uppercase tracking-widest text-amber-600 bg-amber-100/50 w-fit px-2 py-0.5 rounded-full">
+                            <span className="w-1 h-1 rounded-full bg-amber-500 animate-pulse"></span>
+                            Nota Interna - Solo Agentes
+                          </div>
+                        )}
                         <p className="text-sm whitespace-pre-wrap leading-relaxed">{inter.mensaje}</p>
                         
                         {/* Adjuntos */}
@@ -430,6 +436,17 @@ export default function TicketDetail() {
                     <option value="L2">Nivel 2 (L2)</option>
                     <option value="L3">Nivel 3 (L3)</option>
                   </select>
+                </div>
+                <div>
+                  <label className="text-[9px] font-bold text-slate-300 uppercase block mb-1">Categoría</label>
+                  <div className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border transition-all ${
+                    ticket.categoria === 'Fiscal' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                    ticket.categoria === 'Contable' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                    ticket.categoria === 'Nómina' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                    'bg-slate-50 text-slate-500 border-slate-100'
+                  }`}>
+                    {ticket.categoria || 'Otros'}
+                  </div>
                 </div>
                 <div>
                   <label className="text-[9px] font-bold text-slate-300 uppercase block mb-1">Fecha de Creación</label>

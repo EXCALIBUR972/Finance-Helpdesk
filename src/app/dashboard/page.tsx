@@ -4,6 +4,7 @@ import { createClient } from '@/utils/supabase/client';
 import Link from 'next/link';
 import ManualTicketModal from '@/components/ManualTicketModal';
 import Navbar from '@/components/Navbar';
+import StatsOverview from '@/components/StatsOverview';
 
 export default function Dashboard() {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -68,6 +69,7 @@ export default function Dashboard() {
         contact_name,
         contact_email,
         contact_phone,
+        categoria,
         clientes (nombre, apellidos, nit_cedula, correo),
         agente_asignado:agentes!casos_id_agente_asignado_fkey (nombre_completo),
         agente_creador:agentes!casos_id_creador_fkey (nombre_completo)
@@ -144,8 +146,8 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <Navbar />
-      <div className="max-w-6xl mx-auto px-8 pb-10">
-        <header className="flex justify-between items-end mb-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 pb-10">
+        <header className="flex flex-wrap justify-between items-end gap-4 mb-10">
           <div>
             <h1 className="text-3xl font-extrabold text-slate-800">Tickets Activos</h1>
             <p className="text-slate-500">Gestiona los reportes de los clientes de Finance App</p>
@@ -191,6 +193,8 @@ export default function Dashboard() {
             </div>
           </div>
         </header>
+
+        <StatsOverview tickets={tickets} />
 
         {/* Filtros Avanzados */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -258,28 +262,29 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b">
               <tr className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
-                <th className="px-6 py-4">Radicado / Título</th>
-                <th className="px-6 py-4">Cliente</th>
-                <th className="px-6 py-4">Contacto</th>
-                <th className="px-6 py-4">Agente</th>
-                <th className="px-6 py-4">Nivel / Estado</th>
-                <th className="px-6 py-4">Fecha Creación</th>
-                <th className="px-6 py-4">Fecha Cierre</th>
-                <th className="px-6 py-4 text-center">Acción</th>
+                <th className="px-4 py-4">Radicado / Título</th>
+                <th className="px-4 py-4">Cliente</th>
+                <th className="px-4 py-4">Contacto</th>
+                <th className="px-4 py-4">Agente</th>
+                <th className="px-4 py-4">Categoría</th>
+                <th className="px-4 py-4">Nivel / Estado</th>
+                <th className="px-4 py-4">Fecha Creación</th>
+                <th className="px-4 py-4">Fecha Cierre</th>
+                <th className="px-4 py-4 text-center">Acción</th>
               </tr>
             </thead>
             <tbody className="divide-y text-slate-600">
               {filteredTickets.map((ticket) => (
                 <tr key={ticket.id_caso} className="hover:bg-slate-50 transition border-b border-slate-50">
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <div className="font-mono text-indigo-600 font-black text-[10px] uppercase tracking-tighter">{ticket.numero_radicado}</div>
                     <div className="text-sm font-bold text-slate-800 truncate max-w-[180px] mt-0.5">{ticket.titulo || '---'}</div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <div className="text-sm font-bold text-slate-800 leading-none">
                       {ticket.clientes ? `${ticket.clientes.nombre} ${ticket.clientes.apellidos}` : 'Desconocido'}
                     </div>
@@ -287,7 +292,7 @@ export default function Dashboard() {
                       {ticket.clientes?.nit_cedula || 'Sin Documento'}
                     </div>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-4 py-4">
                     <div className="text-sm font-bold text-indigo-600">
                       {ticket.contact_name || '---'}
                     </div>
@@ -296,6 +301,17 @@ export default function Dashboard() {
                     <div className="text-xs font-bold text-slate-600">
                       {ticket.agente_asignado?.nombre_completo || ticket.agente_creador?.nombre_completo || 'Sistema'}
                     </div>
+                  </td>
+                  <td className="px-4 py-4">
+                    <span className={`px-2 py-0.5 rounded-lg text-[9px] font-black uppercase tracking-widest border ${
+                      ticket.categoria === 'Fiscal' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                      ticket.categoria === 'Contable' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                      ticket.categoria === 'Nómina' ? 'bg-orange-50 text-orange-600 border-orange-100' :
+                      ticket.categoria === 'Técnico' ? 'bg-slate-50 text-slate-600 border-slate-200' :
+                      'bg-slate-50 text-slate-400 border-slate-100'
+                    }`}>
+                      {ticket.categoria || 'Otros'}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col gap-1.5 items-start">
@@ -328,7 +344,7 @@ export default function Dashboard() {
                       <span className="text-slate-300 italic font-medium">Pendiente</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 text-center">
+                  <td className="px-4 py-4 text-center">
                     <Link 
                       href={`/ticket/${ticket.id_caso}`}
                       className="inline-block bg-slate-800 hover:bg-black text-white px-4 py-1.5 rounded-xl text-[10px] font-black uppercase transition shadow-md"
