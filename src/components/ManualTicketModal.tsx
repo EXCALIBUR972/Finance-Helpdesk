@@ -6,6 +6,7 @@ import { sendAperturaEmail } from '@/app/actions/emails';
 export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOpen: boolean, onClose: () => void, onSuccess: () => void }) {
   const [loading, setLoading] = useState(false);
   const [clientes, setClientes] = useState<any[]>([]);
+  const [agentes, setAgentes] = useState<any[]>([]);
   const [clientSearch, setClientSearch] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -15,6 +16,7 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
     titulo: '',
     descripcion: '',
     id_cliente: '',
+    id_agente_asignado: '',
     nivel_actual: 'L1',
     status: 'Escalado',
     contact_name: '',
@@ -26,8 +28,23 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
   const supabase = createClient();
 
   useEffect(() => {
-    if (isOpen) fetchClientes();
+    if (isOpen) {
+      fetchClientes();
+      fetchInitialData();
+    }
   }, [isOpen]);
+
+  async function fetchInitialData() {
+    // Cargar Agentes
+    const { data: agentesData } = await supabase.from('agentes').select('id_agente, nombre_completo').eq('activo', true);
+    if (agentesData) setAgentes(agentesData);
+
+    // Cargar Usuario Actual para el asesor por defecto
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setFormData(prev => ({ ...prev, id_agente_asignado: user.id }));
+    }
+  }
 
   async function fetchClientes() {
     const { data } = await supabase.from('clientes').select('id_cliente, nombre, apellidos, telefono_wsp, correo, nit_cedula');
@@ -61,7 +78,7 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
         setUploading(true);
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random()}.${fileExt}`;
-        const filePath = `${user?.id}/${fileName}`;
+        const filePath = `${user?.id || 'manual'}/${fileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from('attachments')
@@ -93,18 +110,15 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
         archivo_url: publicUrl || null
       }]);
       
-      // Enviar Email de Apertura
-      const currentEmail = formData.contact_email || (clientes.find(c => c.id_cliente === formData.id_cliente)?.correo);
-      const currentName = formData.contact_name || (clientes.find(c => c.id_cliente === formData.id_cliente)?.nombre);
-      
-      if (currentEmail) {
-        await sendAperturaEmail(currentEmail, currentName || 'Cliente', numeroRadicado, formData.titulo);
-      }
+      // NOTA: No se envía email de apertura al cliente ni de asignación inicial 
+      // (ya que por defecto se asigna al mismo asesor que lo crea).
 
       onSuccess();
       onClose();
+      // Reset logic preserved but with default agent to be fetched again on next open
       setFormData({ 
-        titulo: '', descripcion: '', id_cliente: '', nivel_actual: 'L1',
+        titulo: '', descripcion: '', id_cliente: '', id_agente_asignado: user?.id || '',
+        nivel_actual: 'L1',
         status: 'Escalado',
         contact_name: '', contact_email: '', contact_phone: '',
         categoria: 'Otros'
@@ -245,6 +259,20 @@ export default function ManualTicketModal({ isOpen, onClose, onSuccess }: { isOp
                 <option value="L1">Nivel 1 (Básico)</option>
                 <option value="L2">Nivel 2 (Técnico)</option>
                 <option value="L3">Nivel 3 (Crítico)</option>
+              </select>
+            </div>
+
+            <div className="col-span-2">
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Asesor Asignado</label>
+              <select 
+                className="w-full px-4 py-2 border rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none bg-slate-50"
+                value={formData.id_agente_asignado}
+                onChange={e => setFormData({...formData, id_agente_asignado: e.target.value})}
+              >
+                <option value="">-- Sin Asignar --</option>
+                {agentes.map(ag => (
+                  <option key={ag.id_agente} value={ag.id_agente}>{ag.nombre_completo}</option>
+                ))}
               </select>
             </div>
 

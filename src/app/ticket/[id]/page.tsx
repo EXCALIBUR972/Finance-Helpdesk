@@ -137,10 +137,14 @@ export default function TicketDetail() {
       let logMensaje = `Estatus cambiado a: **${status}**`;
       if (nivel) logMensaje = `Nivel cambiado a: **${nivel}** (Estatus: ${status})`;
       
-      if (status === 'Escalado' && agenteId) {
-        const ag = allAgentes.find(a => a.id_agente === agenteId);
+      const hasLevelChanged = nivel && (nivel !== ticket.nivel_actual);
+      const hasAgentChanged = agenteId && (agenteId !== ticket.id_agente_asignado);
+
+      if (status === 'Escalado' && (hasLevelChanged || hasAgentChanged)) {
+        const targetAgenteId = agenteId || ticket.id_agente_asignado;
+        const ag = allAgentes.find(a => a.id_agente === targetAgenteId);
         if (ag) {
-          logMensaje += ` (Asignado a: **${ag.nombre_completo}**)`;
+          if (hasAgentChanged) logMensaje += ` (Asignado a: **${ag.nombre_completo}**)`;
           if (ag.email) {
             await sendAsignacionEmail(ag.email, ag.nombre_completo, ticket.numero_radicado, ticket.titulo);
           }
@@ -206,11 +210,25 @@ export default function TicketDetail() {
                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                           <span dangerouslySetInnerHTML={{ __html: inter.mensaje }}></span>
-                          <span className="opacity-60">• {new Date(inter.fecha_hora).toLocaleString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                          <span className="opacity-60">• {new Date(inter.fecha_hora).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit' })}</span>
                           {inter.agentes?.nombre_completo && (
                             <span className="text-indigo-500 ml-1">[{inter.agentes.nombre_completo}]</span>
                           )}
                         </p>
+                        {/* Adjunto para mensajes de Sistema */}
+                        {inter.archivo_url && (
+                          <div className="mt-2 text-center">
+                            <a 
+                              href={inter.archivo_url} 
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-2 px-3 py-1 bg-white border border-slate-200 rounded-lg text-[9px] font-bold text-indigo-600 hover:bg-slate-50 transition"
+                            >
+                              <Paperclip size={10} />
+                              Ver Archivo Adjunto
+                            </a>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : (
@@ -257,7 +275,7 @@ export default function TicketDetail() {
                         <div className={`flex items-center gap-2 mt-3 text-[9px] font-bold uppercase tracking-widest ${
                           inter.tipo_mensaje === 'Agente' ? 'text-indigo-200' : 'text-slate-400'
                         }`}>
-                          <span>{new Date(inter.fecha_hora).toLocaleTimeString()}</span>
+                          <span>{new Date(inter.fecha_hora).toLocaleString([], { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute:'2-digit' })}</span>
                           <span>•</span>
                           <span>{inter.tipo_mensaje}</span>
                           {inter.agentes?.nombre_completo && (
